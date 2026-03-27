@@ -507,9 +507,73 @@
       .form-grid .full { grid-column: 1; }
       .header-badge { display: none; }
       .resultado-header { flex-direction: column; align-items: flex-start; }
-      .tabela-prazos tbody td:nth-child(2) { display: none; }
-    }
 
+      /* Tabela vira lista de cards em mobile */
+      .tabela-prazos,
+      .tabela-prazos thead,
+      .tabela-prazos tbody,
+      .tabela-prazos tr,
+      .tabela-prazos td { display: block; width: 100%; }
+
+      /* Cabeçalho oculto — rótulos inferidos pelo contexto visual */
+      .tabela-prazos thead { display: none; }
+
+      /* Cada linha vira um card */
+      .tabela-prazos tbody tr {
+        background: var(--branco);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--sombra-sm);
+        margin-bottom: .6rem;
+        padding: .75rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+      }
+
+      /* Células sem box-shadow próprio (o card já tem) */
+      .tabela-prazos tbody td {
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+        border-radius: 0;
+      }
+
+      /* Atividade */
+      .tabela-prazos tbody td:first-child {
+        font-size: .9rem;
+        font-weight: 600;
+        border-radius: 0;
+      }
+
+      /* Badge de dias: visível */
+      .tabela-prazos tbody td:nth-child(2) {
+        display: block;
+      }
+
+      /* Data-limite: destaque, alinhada à esquerda */
+      .tabela-prazos tbody td:last-child {
+        text-align: left;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--azul-jus);
+      }
+
+      /* Card de destaque (recebimento do material) */
+      .tabela-prazos tbody tr.linha-destaque {
+        background: var(--azul-jus);
+        padding: 1rem;
+      }
+      .tabela-prazos tbody tr.linha-destaque td:first-child {
+        color: var(--branco);
+        font-size: .85rem;
+        opacity: .85;
+      }
+      .tabela-prazos tbody tr.linha-destaque td:last-child {
+        color: var(--amarelo-claro);
+        font-size: 1.2rem;
+        text-align: left;
+      }
+    }
     /* ── Alto contraste / Preferências do sistema ────────────────────────────── */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
