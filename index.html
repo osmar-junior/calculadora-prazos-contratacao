@@ -380,15 +380,23 @@
     }
     .resultado-titulo .dot { width: 10px; height: 10px; background: var(--verde-ok); border-radius: 50%; }
     .modo-calculo-badge {
-      font-size: .7rem;
-      font-weight: 600;
-      letter-spacing: .06em;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .05em;
       text-transform: uppercase;
-      background: var(--cinza-bg);
-      border: 1.5px solid var(--cinza-borda);
       border-radius: 999px;
-      padding: .25rem .75rem;
-      color: var(--cinza-muted);
+      padding: .3rem .9rem;
+      border: 2px solid transparent;
+    }
+    .modo-calculo-badge.modo-uteis {
+      background: #e8f5ee;
+      color: var(--verde-ok);
+      border-color: #a8d5be;
+    }
+    .modo-calculo-badge.modo-corridos {
+      background: #e8f0ff;
+      color: var(--azul-medio);
+      border-color: #b0c8f0;
     }
 
     /* ── Tabela de prazos ────────────────────────────────────────────────────── */
@@ -797,11 +805,29 @@
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  // ── Invalidação do resultado ao alterar campos ──────────────────────────────
+  /**
+   * Quando qualquer campo do formulário é alterado após um cálculo,
+   * o resultado é ocultado imediatamente para evitar leitura de dados
+   * desatualizados. O usuário precisa pressionar "Calcular" novamente.
+   */
+  function invalidarResultado() {
+    secResultado.classList.remove('visivel');
+    // Pequeno delay para garantir que a transição CSS de saída rode
+    setTimeout(() => { tabelaCorpo.innerHTML = ''; }, 300);
+  }
+
+  form.addEventListener('change', invalidarResultado);
+  form.addEventListener('input',  invalidarResultado);
+
   // ── Lógica de cálculo ────────────────────────────────────────────────────────
 
   /**
-   * Constrói o vetor de acréscimos totais somando todas as condições ativas.
-   * Retorna objeto { ETP, TR, FASE_SELECAO, FORMALIZACAO, PRAZO_ENTREGA }.
+   * Calcula o total de acréscimos de dias para cada fase, somando
+   * linearmente todas as condições ativas informadas pelo usuário.
+   *
+   * Retorna objeto { ETP, TR, FASE_SELECAO, FORMALIZACAO, PRAZO_ENTREGA }
+   * onde cada valor é a SOMA dos acréscimos (sem o prazo-padrão).
    */
   function calcularAcrescimos(novidade, tipoId, arp, prazoEntrega, faixaId) {
     const fases = ['ETP', 'TR', 'FASE_SELECAO', 'FORMALIZACAO', 'PRAZO_ENTREGA'];
@@ -814,51 +840,71 @@
 
     if (novidade === 'sim') somar(CONFIG.acrescimos.novidade);
     somar(CONFIG.acrescimos.tipoContratacao[tipoId]);
-    if (arp === 'sim') somar(CONFIG.acrescimos.assinaturaContrato);
+    if (arp === 'sim')      somar(CONFIG.acrescimos.assinaturaContrato);
     somar(CONFIG.acrescimos.itensAContratar[faixaId]);
 
-    // Prazo de entrega: o acréscimo É o valor informado (quando > 0)
+    // Prazo de entrega informado pelo usuário é tratado como acréscimo
+    // direto na fase PRAZO_ENTREGA (já que o valor padrão é 5 dias).
     total['PRAZO_ENTREGA'] += prazoEntrega;
 
     return total;
   }
 
   /**
-   * Monta o cronograma retroativo a partir da data de recebimento.
-   * Retorna array de objetos { atividade, diasTotais, data }.
+   * Monta o cronograma retroativo a partir da data-base de recebimento.
+   *
+   * REGRA DE DESLOCAMENTO DE FASE:
+   *   Cada marco usa o prazo-padrão da fase SEGUINTE + os acréscimos
+   *   da fase SEGUINTE. Isso porque o prazo-padrão representa o tempo
+   *   necessário para executar a próxima etapa a partir daquele marco.
+   *
+   *   Marco         → usa padrão + acréscimos de…
+   *   ─────────────────────────────────────────────
+   *   DOD           → ETP
+   *   ETP           → TR
+   *   TR            → FASE_SELECAO
+   *   FASE_SELECAO  → FORMALIZACAO
+   *   FORMALIZACAO  → PRAZO_ENTREGA
+   *   (data-base)   → ponto de partida fixo
+   *
+   * Retorna array de objetos { atividade, diasTotais, data, destaque }.
    */
   function calcularCronograma(dataRecebimento, acrescimos) {
     const p = CONFIG.prazoesPadrao;
 
-    // Dias totais por fase = padrão + acréscimos
-    const diasFase = {
-      PRAZO_ENTREGA: p.PRAZO_ENTREGA + acrescimos.PRAZO_ENTREGA,
-      FORMALIZACAO:  p.FORMALIZACAO  + acrescimos.FORMALIZACAO,
-      FASE_SELECAO:  p.FASE_SELECAO  + acrescimos.FASE_SELECAO,
-      TR:            p.TR            + acrescimos.TR,
-      ETP:           p.ETP           + acrescimos.ETP,
+    // Dias de cada intervalo entre marcos (padrão + acréscimos da fase seguinte)
+    const dias = {
+      DOD:          p.ETP           + acrescimos.ETP,
+      ETP:          p.TR            + acrescimos.TR,
+      TR:           p.FASE_SELECAO  + acrescimos.FASE_SELECAO,
+      FASE_SELECAO: p.FORMALIZACAO  + acrescimos.FORMALIZACAO,
+      FORMALIZACAO: p.PRAZO_ENTREGA + acrescimos.PRAZO_ENTREGA,
     };
 
-    // Retroage a partir da data de recebimento
-    const dataFimFormalizacao  = subtrairDias(dataRecebimento,  diasFase.PRAZO_ENTREGA);
-    const dataInicioFormalizacao = subtrairDias(dataFimFormalizacao, diasFase.FORMALIZACAO);
-    const dataInicioSelecao    = subtrairDias(dataInicioFormalizacao, diasFase.FASE_SELECAO);
-    const dataEnvioTR          = subtrairDias(dataInicioSelecao, diasFase.TR);
-    const dataEnvioETP         = subtrairDias(dataEnvioTR, diasFase.ETP);
+    // Cálculo retroativo a partir da data de recebimento
+    const dataFormalizacao  = subtrairDias(dataRecebimento,   dias.FORMALIZACAO);
+    const dataFaseSelecao   = subtrairDias(dataFormalizacao,  dias.FASE_SELECAO);
+    const dataTR            = subtrairDias(dataFaseSelecao,   dias.TR);
+    const dataETP           = subtrairDias(dataTR,            dias.ETP);
+    const dataDOD           = subtrairDias(dataETP,           dias.DOD);
 
     return [
-      { atividade: 'Envio DOD',                           diasTotais: null,                    data: null, destaque: false, aviso: 'Anterior ao cálculo automático' },
-      { atividade: 'Envio ETP',                           diasTotais: diasFase.ETP,            data: dataEnvioETP,          destaque: false },
-      { atividade: 'Envio TR',                            diasTotais: diasFase.TR,             data: dataEnvioTR,           destaque: false },
-      { atividade: 'Início da Fase de Seleção',           diasTotais: diasFase.FASE_SELECAO,   data: dataInicioSelecao,     destaque: false },
-      { atividade: 'Formalização da Contratação',         diasTotais: diasFase.FORMALIZACAO,   data: dataInicioFormalizacao,destaque: false },
-      { atividade: 'Recebimento do Material / Início do Serviço', diasTotais: diasFase.PRAZO_ENTREGA, data: dataRecebimento, destaque: true },
+      { atividade: 'Envio DOD',                                    diasTotais: dias.DOD,          data: dataDOD,           destaque: false },
+      { atividade: 'Envio ETP',                                    diasTotais: dias.ETP,          data: dataETP,           destaque: false },
+      { atividade: 'Envio TR',                                     diasTotais: dias.TR,           data: dataTR,            destaque: false },
+      { atividade: 'Início da Fase de Seleção',                    diasTotais: dias.FASE_SELECAO, data: dataFaseSelecao,   destaque: false },
+      { atividade: 'Formalização da Contratação',                  diasTotais: dias.FORMALIZACAO, data: dataFormalizacao,  destaque: false },
+      { atividade: 'Recebimento do Material / Início do Serviço',  diasTotais: null,              data: dataRecebimento,   destaque: true  },
     ];
   }
 
   // ── Renderização do resultado ────────────────────────────────────────────────
   function renderizarResultado(cronograma) {
     tabelaCorpo.innerHTML = '';
+
+    const modoLabel  = CONFIG.usarDiasUteis ? 'Dias úteis' : 'Dias corridos';
+    const modoIcn    = CONFIG.usarDiasUteis ? '📅' : '🗓️';
+    const ehUtil     = CONFIG.usarDiasUteis;
 
     cronograma.forEach(item => {
       const tr = document.createElement('tr');
@@ -869,18 +915,17 @@
       tdAtiv.textContent = item.atividade;
       tr.appendChild(tdAtiv);
 
-      // Coluna dias
+      // Coluna dias (intervalo até o próximo marco)
       const tdDias = document.createElement('td');
       if (item.diasTotais !== null) {
         const badge = document.createElement('span');
         badge.className = 'dias-badge';
-        badge.textContent = `${item.diasTotais} dias`;
-        badge.setAttribute('aria-label', `${item.diasTotais} dias`);
+        badge.textContent = `${item.diasTotais} ${ehUtil ? 'd.u.' : 'd.c.'}`;
+        badge.setAttribute('aria-label', `${item.diasTotais} ${ehUtil ? 'dias úteis' : 'dias corridos'} até o próximo marco`);
         tdDias.appendChild(badge);
-      } else if (item.aviso) {
-        tdDias.textContent = item.aviso;
-        tdDias.style.fontStyle = 'italic';
-        tdDias.style.fontSize = '.75rem';
+      } else {
+        // Linha de destaque (data-base): sem intervalo a mostrar
+        tdDias.setAttribute('aria-hidden', 'true');
       }
       tr.appendChild(tdDias);
 
@@ -892,11 +937,11 @@
       tabelaCorpo.appendChild(tr);
     });
 
-    // Badge e nota de modo de cálculo
-    const modoLabel = CONFIG.usarDiasUteis ? 'Dias úteis' : 'Dias corridos';
-    badgeModo.textContent = modoLabel;
-    notaModo.textContent  = CONFIG.usarDiasUteis
-      ? 'cálculo considera apenas dias úteis, excluindo finais de semana e feriados configurados'
+    // Badge de modo: destaque visual explícito
+    badgeModo.textContent   = `${modoIcn} ${modoLabel}`;
+    badgeModo.className     = 'modo-calculo-badge ' + (ehUtil ? 'modo-uteis' : 'modo-corridos');
+    notaModo.textContent    = ehUtil
+      ? 'cálculo considera apenas dias úteis, excluindo finais de semana e feriados configurados em config.js'
       : 'cálculo considera dias corridos (incluindo finais de semana e feriados)';
 
     // Exibe a seção com animação
@@ -920,28 +965,27 @@
     e.preventDefault();
     limparErro();
 
-    const dataStr     = document.getElementById('data-recebimento').value;
-    const novidade    = document.querySelector('input[name="novidade"]:checked')?.value;
-    const arp         = document.querySelector('input[name="arp"]:checked')?.value;
-    const tipoId      = parseInt(document.getElementById('tipo-contratacao').value, 10);
-    const prazoStr    = document.getElementById('prazo-entrega').value;
-    const faixaId     = parseInt(document.getElementById('qtd-itens').value, 10);
+    const dataStr  = document.getElementById('data-recebimento').value;
+    const novidade = document.querySelector('input[name="novidade"]:checked')?.value;
+    const arp      = document.querySelector('input[name="arp"]:checked')?.value;
+    const tipoId   = parseInt(document.getElementById('tipo-contratacao').value, 10);
+    const prazoStr = document.getElementById('prazo-entrega').value;
+    const faixaId  = parseInt(document.getElementById('qtd-itens').value, 10);
 
     // Validações
-    if (!dataStr) { mostrarErro('Informe a data de recebimento do material ou início do serviço.'); return; }
-    if (!novidade) { mostrarErro('Indique se trata-se de uma contratação nova/desconhecida.'); return; }
-    if (!arp) { mostrarErro('Indique se haverá assinatura de contrato ou ARP.'); return; }
-    if (isNaN(tipoId)) { mostrarErro('Selecione o tipo de contratação.'); return; }
-    if (prazoStr === '' || isNaN(parseInt(prazoStr, 10))) { mostrarErro('Informe o prazo para entrega (use 0 se não houver).'); return; }
-    if (isNaN(faixaId)) { mostrarErro('Selecione a quantidade de itens da contratação.'); return; }
+    if (!dataStr)                                        { mostrarErro('Informe a data de recebimento do material ou início do serviço.'); return; }
+    if (!novidade)                                       { mostrarErro('Indique se trata-se de uma contratação nova/desconhecida.'); return; }
+    if (!arp)                                            { mostrarErro('Indique se haverá assinatura de contrato ou ARP.'); return; }
+    if (isNaN(tipoId))                                   { mostrarErro('Selecione o tipo de contratação.'); return; }
+    if (prazoStr === '' || isNaN(parseInt(prazoStr,10))) { mostrarErro('Informe o prazo para entrega (use 0 se não houver).'); return; }
+    if (isNaN(faixaId))                                  { mostrarErro('Selecione a quantidade de itens da contratação.'); return; }
 
-    const prazoEntrega  = parseInt(prazoStr, 10);
-    // Parse local (evita offset de timezone)
+    const prazoEntrega    = parseInt(prazoStr, 10);
     const [ano, mes, dia] = dataStr.split('-').map(Number);
     const dataRecebimento = new Date(ano, mes - 1, dia);
 
-    const acrescimos  = calcularAcrescimos(novidade, tipoId, arp, prazoEntrega, faixaId);
-    const cronograma  = calcularCronograma(dataRecebimento, acrescimos);
+    const acrescimos = calcularAcrescimos(novidade, tipoId, arp, prazoEntrega, faixaId);
+    const cronograma = calcularCronograma(dataRecebimento, acrescimos);
 
     renderizarResultado(cronograma);
   });
