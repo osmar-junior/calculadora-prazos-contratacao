@@ -833,18 +833,29 @@
     const fases = ['ETP', 'TR', 'FASE_SELECAO', 'FORMALIZACAO', 'PRAZO_ENTREGA'];
     const total = Object.fromEntries(fases.map(f => [f, 0]));
 
-    function somar(origem) {
+    /**
+     * Soma os acréscimos de `origem` no acumulador `total`.
+     * Lança aviso no console se alguma fase esperada estiver ausente
+     * no config.js, facilitando a detecção de erros de manutenção.
+     */
+    function somar(origem, contexto) {
       if (!origem) return;
-      fases.forEach(f => { total[f] += (origem[f] || 0); });
+      fases.forEach(f => {
+        if (origem[f] === undefined) {
+          console.warn(`[Calculadora] Fase "${f}" ausente em acrescimos.${contexto}. Verifique o config.js.`);
+          total[f] += 0;
+        } else {
+          total[f] += origem[f];
+        }
+      });
     }
 
-    if (novidade === 'sim') somar(CONFIG.acrescimos.novidade);
-    somar(CONFIG.acrescimos.tipoContratacao[tipoId]);
-    if (arp === 'sim')      somar(CONFIG.acrescimos.assinaturaContrato);
-    somar(CONFIG.acrescimos.itensAContratar[faixaId]);
+    if (novidade === 'sim') somar(CONFIG.acrescimos.novidade, 'novidade');
+    somar(CONFIG.acrescimos.tipoContratacao[tipoId], `tipoContratacao[${tipoId}]`);
+    if (arp === 'sim')      somar(CONFIG.acrescimos.assinaturaContrato, 'assinaturaContrato');
+    somar(CONFIG.acrescimos.itensAContratar[faixaId], `itensAContratar[${faixaId}]`);
 
-    // Prazo de entrega informado pelo usuário é tratado como acréscimo
-    // direto na fase PRAZO_ENTREGA (já que o valor padrão é 5 dias).
+    // Prazo de entrega informado pelo usuário: acréscimo direto em PRAZO_ENTREGA.
     total['PRAZO_ENTREGA'] += prazoEntrega;
 
     return total;

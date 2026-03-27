@@ -68,7 +68,7 @@ const CONFIG = {
 
   // ─── Acréscimos por situação ──────────────────────────────────────────────────
   // Cada entrada define o acréscimo (em dias) por fase para uma dada condição.
-  // Fases não informadas equivalem a acréscimo 0.
+  // Os acréscimos de múltiplas condições ativas são somados linearmente.
   acrescimos: {
 
     // Novidade? SIM
@@ -82,35 +82,39 @@ const CONFIG = {
 
     // Por tipo de contratação (chave = id do tipo)
     tipoContratacao: {
-      1:  { ETP: 10, TR: 5, FASE_SELECAO: 20 },
-      2:  { ETP: 10, TR: 5, FASE_SELECAO: 10 },
-      3:  { ETP: 10, TR: 5, FASE_SELECAO: 10 },
-      4:  { ETP:  0, TR: 0, FASE_SELECAO:  0 },
-      5:  { ETP:  0, TR: 0, FASE_SELECAO: 30 },
-      6:  { ETP:  0, TR: 0, FASE_SELECAO: 15 },
-      7:  { ETP:  0, TR: 0, FASE_SELECAO: 30 },
-      8:  { ETP:  0, TR: 0, FASE_SELECAO:  0 },
-      9:  { ETP:  0, TR: 0, FASE_SELECAO:  0 },
-      10: { ETP: 10, TR: 5, FASE_SELECAO: 20 },
-      11: { ETP: 10, TR: 5, FASE_SELECAO: 20 },
-      12: { ETP: 20, TR:10, FASE_SELECAO: 30 },
+      1:  { ETP: 10, TR:  5, FASE_SELECAO: 20, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      2:  { ETP: 10, TR:  5, FASE_SELECAO: 10, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      3:  { ETP: 10, TR:  5, FASE_SELECAO: 10, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      4:  { ETP:  0, TR:  0, FASE_SELECAO:  0, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      5:  { ETP:  0, TR:  0, FASE_SELECAO: 30, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      6:  { ETP:  0, TR:  0, FASE_SELECAO: 15, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      7:  { ETP:  0, TR:  0, FASE_SELECAO: 30, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      8:  { ETP:  0, TR:  0, FASE_SELECAO:  0, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      9:  { ETP:  0, TR:  0, FASE_SELECAO:  0, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      10: { ETP: 10, TR:  5, FASE_SELECAO: 20, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      11: { ETP: 10, TR:  5, FASE_SELECAO: 20, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      12: { ETP: 20, TR: 10, FASE_SELECAO: 30, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
     },
 
     // Assinatura de contrato ou ARP? SIM
     assinaturaContrato: {
+      ETP:           0,
+      TR:            0,
+      FASE_SELECAO:  0,
       FORMALIZACAO: 10,
+      PRAZO_ENTREGA: 0,
     },
 
-    // Prazo para entrega (dias corridos informados pelo usuário)
-    // O acréscimo em PRAZO_ENTREGA é o próprio valor informado.
-    // Tratado diretamente no código — não editar aqui.
+    // Prazo para entrega informado pelo usuário.
+    // O acréscimo em PRAZO_ENTREGA é o próprio valor digitado pelo usuário.
+    // Esta estrutura não deve ser editada; o tratamento é feito no código.
 
-    // Por faixa de itens (chave = id da faixa)
+    // Por faixa de itens a contratar (chave = id da faixa)
     itensAContratar: {
-      1: { FASE_SELECAO:  4 },
-      2: { FASE_SELECAO:  6, FORMALIZACAO: 2 },
-      3: { FASE_SELECAO:  8, FORMALIZACAO: 3 },
-      4: { FASE_SELECAO: 15, FORMALIZACAO: 4 },
+      1: { ETP: 0, TR: 0, FASE_SELECAO:  4, FORMALIZACAO: 0, PRAZO_ENTREGA: 0 },
+      2: { ETP: 0, TR: 0, FASE_SELECAO:  6, FORMALIZACAO: 2, PRAZO_ENTREGA: 0 },
+      3: { ETP: 0, TR: 0, FASE_SELECAO:  8, FORMALIZACAO: 3, PRAZO_ENTREGA: 0 },
+      4: { ETP: 0, TR: 0, FASE_SELECAO: 15, FORMALIZACAO: 4, PRAZO_ENTREGA: 0 },
     },
   },
 };
