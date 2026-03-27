@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Prazos de Contratação — TRE-RN</title>
+  <meta name="description" content="Ferramenta para estimativa dos marcos temporais de contratações do TRE-RN, auxiliando as Unidades Demandantes no planejamento de aquisições." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Tokens ──────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Paleta institucional Justiça Eleitoral */
+      --azul-jus:       #003580;
+      --azul-medio:     #0056b3;
+      --azul-claro:     #1a6fc4;
+      --amarelo-jus:    #f5a800;
+      --amarelo-claro:  #ffd166;
+      --branco:         #ffffff;
+      --cinza-bg:       #f2f5fa;
+      --cinza-borda:    #cdd5e0;
+      --cinza-texto:    #4a5568;
+      --cinza-muted:    #718096;
+      --verde-ok:       #1a7f5a;
+      --vermelho-erro:  #c0392b;
+      --sombra-sm:      0 2px 8px rgba(0,0,0,.08);
+      --sombra-md:      0 4px 20px rgba(0,0,0,.12);
+      --sombra-lg:      0 8px 40px rgba(0,53,128,.14);
+      --radius-sm:      6px;
+      --radius-md:      12px;
+      --radius-lg:      20px;
+      --font-display:   'DM Serif Display', Georgia, serif;
+      --font-body:      'DM Sans', system-ui, sans-serif;
+      --transition:     .2s cubic-bezier(.4,0,.2,1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--cinza-bg);
+      color: var(--cinza-texto);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Skip link (WCAG 2.4.1) ─────────────────────────────────────────────── */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 1rem;
+      background: var(--azul-jus);
+      color: var(--branco);
+      padding: .5rem 1rem;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      font-size: .875rem;
+      font-weight: 600;
+      z-index: 9999;
+      text-decoration: none;
+    }
+    .skip-link:focus { top: 0; }
+
+    /* ── Header ──────────────────────────────────────────────────────────────── */
+    .site-header {
+      background: linear-gradient(135deg, var(--azul-jus) 0%, var(--azul-medio) 100%);
+      color: var(--branco);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      box-shadow: var(--sombra-md);
+      position: relative;
+      overflow: hidden;
+    }
+    .site-header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 30px,
+        rgba(255,255,255,.025) 30px,
+        rgba(255,255,255,.025) 60px
+      );
+      pointer-events: none;
+    }
+    .header-logo {
+      flex-shrink: 0;
+      width: 56px;
+      height: 56px;
+      background: var(--amarelo-jus);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--azul-jus);
+      font-weight: 700;
+      box-shadow: 0 0 0 4px rgba(245,168,0,.3);
+    }
+    .header-text h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 3vw, 1.5rem);
+      line-height: 1.2;
+      letter-spacing: -.01em;
+    }
+    .header-text p {
+      font-size: .8rem;
+      opacity: .8;
+      margin-top: .2rem;
+      font-weight: 300;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .header-badge {
+      margin-left: auto;
+      flex-shrink: 0;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px;
+      padding: .3rem .8rem;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--amarelo-claro);
+    }
+
+    /* ── Layout principal ────────────────────────────────────────────────────── */
+    .main-wrapper {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    /* ── Banner de orientações ───────────────────────────────────────────────── */
+    .orientacoes {
+      background: linear-gradient(135deg, #fff8e7 0%, #fffbf0 100%);
+      border: 1px solid var(--amarelo-claro);
+      border-left: 5px solid var(--amarelo-jus);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      animation: fadeSlideDown .5s var(--transition) both;
+    }
+    .orientacoes-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .6rem;
+    }
+    .orientacoes-header .icon {
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+    .orientacoes-header h2 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--azul-jus);
+    }
+    .orientacoes p {
+      font-size: .875rem;
+      color: var(--cinza-texto);
+      line-height: 1.65;
+    }
+    .orientacoes p + p { margin-top: .5rem; }
+    .orientacoes em {
+      font-style: normal;
+      font-weight: 600;
+      color: var(--azul-jus);
+    }
+
+    /* ── Card do formulário ──────────────────────────────────────────────────── */
+    .card {
+      background: var(--branco);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--sombra-lg);
+      padding: 2rem;
+      animation: fadeSlideDown .5s .1s var(--transition) both;
+    }
+    .card-section-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      color: var(--azul-jus);
+      margin-bottom: 1.25rem;
+      padding-bottom: .6rem;
+      border-bottom: 2px solid var(--cinza-borda);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .card-section-title .dot {
+      width: 10px;
+      height: 10px;
+      background: var(--amarelo-jus);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Grid de campos ──────────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem 1.5rem;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+
+    /* ── Campo individual ────────────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: .4rem; }
+
+    label {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--azul-jus);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    label .required {
+      color: var(--vermelho-erro);
+      margin-left: .2rem;
+      font-weight: 700;
+    }
+    .field-hint {
+      font-size: .75rem;
+      color: var(--cinza-muted);
+      line-height: 1.4;
+    }
+
+    input[type="date"],
+    input[type="number"],
+    select {
+      font-family: var(--font-body);
+      font-size: .9rem;
+      color: var(--cinza-texto);
+      background: var(--cinza-bg);
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: var(--radius-sm);
+      padding: .65rem .85rem;
+      width: 100%;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230056b3' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      padding-right: 2.5rem;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--azul-claro);
+      background: var(--branco);
+      box-shadow: 0 0 0 3px rgba(26,111,196,.15);
+    }
+    input:invalid:not(:placeholder-shown) { border-color: var(--vermelho-erro); }
+
+    /* ── Toggle Sim/Não ──────────────────────────────────────────────────────── */
+    .toggle-group {
+      display: flex;
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--cinza-bg);
+    }
+    .toggle-group input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-group label {
+      flex: 1;
+      padding: .65rem;
+      text-align: center;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--cinza-muted);
+      background: transparent;
+      transition: background var(--transition), color var(--transition);
+      border: none;
+      user-select: none;
+    }
+    .toggle-group input[type="radio"]:checked + label {
+      background: var(--azul-jus);
+      color: var(--branco);
+    }
+    .toggle-group input[type="radio"]:focus-visible + label {
+      outline: 3px solid var(--azul-claro);
+      outline-offset: -3px;
+    }
+    .toggle-group label:hover:not(.checked) {
+      background: rgba(0,53,128,.07);
+      color: var(--azul-jus);
+    }
+
+    /* ── Divisor ─────────────────────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1.5px solid var(--cinza-borda);
+      margin: 1.75rem 0;
+    }
+
+    /* ── Botão calcular ──────────────────────────────────────────────────────── */
+    .btn-calcular {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .6rem;
+      width: 100%;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, var(--azul-jus) 0%, var(--azul-claro) 100%);
+      color: var(--branco);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+      box-shadow: 0 4px 16px rgba(0,53,128,.3);
+      margin-top: .5rem;
+    }
+    .btn-calcular:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,53,128,.35); }
+    .btn-calcular:active { transform: translateY(0); }
+    .btn-calcular:focus-visible { outline: 3px solid var(--amarelo-jus); outline-offset: 3px; }
+    .btn-calcular svg { width: 18px; height: 18px; }
+
+    /* ── Mensagem de erro ────────────────────────────────────────────────────── */
+    .msg-erro {
+      background: #fef0ee;
+      border: 1.5px solid #f5c6c2;
+      border-left: 5px solid var(--vermelho-erro);
+      border-radius: var(--radius-sm);
+      padding: .9rem 1rem;
+      font-size: .875rem;
+      color: var(--vermelho-erro);
+      display: none;
+      margin-top: 1rem;
+    }
+    .msg-erro.visivel { display: block; }
+
+    /* ── Resultado ───────────────────────────────────────────────────────────── */
+    .resultado {
+      margin-top: 2rem;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .4s var(--transition), transform .4s var(--transition);
+      pointer-events: none;
+    }
+    .resultado.visivel { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+    .resultado-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 1.25rem;
+    }
+    .resultado-titulo {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--azul-jus);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .resultado-titulo .dot { width: 10px; height: 10px; background: var(--verde-ok); border-radius: 50%; }
+    .modo-calculo-badge {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: var(--cinza-bg);
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 999px;
+      padding: .25rem .75rem;
+      color: var(--cinza-muted);
+    }
+
+    /* ── Tabela de prazos ────────────────────────────────────────────────────── */
+    .tabela-prazos {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 .5rem;
+    }
+    .tabela-prazos thead th {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--cinza-muted);
+      padding: 0 1rem .25rem;
+      text-align: left;
+    }
+    .tabela-prazos thead th:last-child { text-align: right; }
+
+    .tabela-prazos tbody tr {
+      animation: fadeSlideRight .35s both;
+    }
+    .tabela-prazos tbody tr:nth-child(1) { animation-delay: .05s; }
+    .tabela-prazos tbody tr:nth-child(2) { animation-delay: .10s; }
+    .tabela-prazos tbody tr:nth-child(3) { animation-delay: .15s; }
+    .tabela-prazos tbody tr:nth-child(4) { animation-delay: .20s; }
+    .tabela-prazos tbody tr:nth-child(5) { animation-delay: .25s; }
+
+    .tabela-prazos tbody td {
+      background: var(--branco);
+      padding: .85rem 1rem;
+      font-size: .9rem;
+      box-shadow: var(--sombra-sm);
+    }
+    .tabela-prazos tbody td:first-child {
+      border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+      font-weight: 500;
+      color: var(--azul-jus);
+    }
+    .tabela-prazos tbody td:nth-child(2) {
+      color: var(--cinza-muted);
+      font-size: .8rem;
+    }
+    .tabela-prazos tbody td:last-child {
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      text-align: right;
+      font-weight: 700;
+      color: var(--azul-jus);
+      white-space: nowrap;
+    }
+
+    /* Linha especial: recebimento */
+    .tabela-prazos tbody tr.linha-destaque td {
+      background: var(--azul-jus);
+      color: var(--branco);
+    }
+    .tabela-prazos tbody tr.linha-destaque td:first-child { color: var(--branco); }
+    .tabela-prazos tbody tr.linha-destaque td:last-child { color: var(--amarelo-claro); font-size: 1.05rem; }
+
+    .dias-badge {
+      display: inline-block;
+      background: var(--cinza-bg);
+      border: 1px solid var(--cinza-borda);
+      border-radius: 999px;
+      padding: .1rem .55rem;
+      font-size: .7rem;
+      font-weight: 600;
+      color: var(--cinza-muted);
+    }
+
+    /* ── Nota de rodapé ──────────────────────────────────────────────────────── */
+    .nota-rodape {
+      margin-top: 1.25rem;
+      padding: .9rem 1rem;
+      background: #f0f4ff;
+      border-radius: var(--radius-sm);
+      border: 1px solid #c5d3f5;
+      font-size: .78rem;
+      color: var(--cinza-muted);
+      line-height: 1.55;
+    }
+    .nota-rodape strong { color: var(--azul-jus); }
+
+    /* ── Footer ──────────────────────────────────────────────────────────────── */
+    .site-footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: .75rem;
+      color: var(--cinza-muted);
+      border-top: 1px solid var(--cinza-borda);
+      margin-top: 2rem;
+    }
+
+    /* ── Animações ───────────────────────────────────────────────────────────── */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideRight {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Responsivo ──────────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .card { padding: 1.25rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+      .header-badge { display: none; }
+      .resultado-header { flex-direction: column; align-items: flex-start; }
+      .tabela-prazos tbody td:nth-child(2) { display: none; }
+    }
+
+    /* ── Alto contraste / Preferências do sistema ────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    @media (forced-colors: active) {
+      .btn-calcular { border: 2px solid ButtonText; }
+    }
+  </style>
+</head>
+<body>
+
+<a href="#formulario" class="skip-link">Ir para o formulário</a>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="site-header" role="banner">
+  <div class="header-logo" aria-hidden="true">JE</div>
+  <div class="header-text">
+    <h1>Calculadora de Prazos de Contratação</h1>
+    <p>Tribunal Regional Eleitoral do Rio Grande do Norte</p>
+  </div>
+  <span class="header-badge" aria-label="Ferramenta de planejamento">Planejamento</span>
+</header>
+
+<!-- ── Conteúdo principal ───────────────────────────────────────────────────── -->
+<main class="main-wrapper" id="conteudo-principal">
+
+  <!-- Orientações -->
+  <section class="orientacoes" aria-labelledby="orientacoes-titulo" role="note">
+    <div class="orientacoes-header">
+      <span class="icon" aria-hidden="true">ℹ️</span>
+      <h2 id="orientacoes-titulo">Como usar esta calculadora</h2>
+    </div>
+    <p>
+      Esta ferramenta auxilia as <em>Unidades Demandantes</em> na definição dos marcos temporais necessários
+      para que a contratação pretendida seja efetivada no período planejado. O ponto de partida é a
+      <em>data em que você precisa receber o material</em> ou dar início à prestação do serviço.
+    </p>
+    <p>
+      Respondendo corretamente as questões abaixo, a calculadora apresentará as sugestões para as datas-limite
+      de cada etapa do processo. <em>Cada contratação tem sua característica própria</em> — as sugestões
+      devem ser analisadas e criticadas, pois são estabelecidas a partir das médias históricas das
+      contratações do TRE-RN.
+    </p>
+  </section>
+
+  <!-- Formulário -->
+  <div class="card" id="formulario">
+
+    <h2 class="card-section-title">
+      <span class="dot" aria-hidden="true"></span>
+      Dados da contratação
+    </h2>
+
+    <form id="form-prazos" novalidate aria-label="Formulário de estimativa de prazos">
+
+      <div class="form-grid">
+
+        <!-- Data de recebimento -->
+        <div class="field full">
+          <label for="data-recebimento">
+            Data de recebimento do material ou início do serviço
+            <span class="required" aria-label="campo obrigatório">*</span>
+          </label>
+          <input
+            type="date"
+            id="data-recebimento"
+            name="data-recebimento"
+            required
+            aria-required="true"
+            aria-describedby="hint-data"
+          />
+          <span class="field-hint" id="hint-data">
+            Informe a data em que o material deve ser entregue ou o serviço deve ter início.
+          </span>
+        </div>
+
+        <!-- Novidade -->
+        <div class="field">
+          <label>
+            Trata-se de contratação nova/desconhecida?
+            <span class="required" aria-label="campo obrigatório">*</span>
+          </label>
+          <div class="toggle-group" role="group" aria-labelledby="label-novidade">
+            <input type="radio" id="novidade-nao" name="novidade" value="nao" />
+            <label for="novidade-nao">Não</label>
+            <input type="radio" id="novidade-sim" name="novidade" value="sim" />
+            <label for="novidade-sim">Sim</label>
+          </div>
+          <span class="field-hint">
+            Marque "Sim" se não há definição exata do que será contratado ou se é a primeira vez.
+          </span>
+        </div>
+
+        <!-- Assinatura de contrato ou ARP -->
+        <div class="field">
+          <label>
+            Haverá assinatura de contrato ou ARP?
+            <span class="required" aria-label="campo obrigatório">*</span>
+          </label>
+          <div class="toggle-group" role="group" aria-labelledby="label-arp">
+            <input type="radio" id="arp-nao" name="arp" value="nao" />
+            <label for="arp-nao">Não</label>
+            <input type="radio" id="arp-sim" name="arp" value="sim" />
+            <label for="arp-sim">Sim</label>
+          </div>
+        </div>
+
+        <!-- Tipo de contratação -->
+        <div class="field full">
+          <label for="tipo-contratacao">
+            Tipo de contratação
+            <span class="required" aria-label="campo obrigatório">*</span>
+          </label>
+          <select id="tipo-contratacao" name="tipo-contratacao" required aria-required="true">
+            <option value="" disabled selected>Selecione o tipo…</option>
+          </select>
+        </div>
+
+        <!-- Prazo para entrega -->
+        <div class="field">
+          <label for="prazo-entrega">
+            Prazo para entrega ou início do serviço
+            <span class="required" aria-label="campo obrigatório">*</span>
+          </label>
+          <input
+            type="number"
+            id="prazo-entrega"
+            name="prazo-entrega"
+            min="0"
+            max="9999"
+            placeholder="0"
+            required
+            aria-required="true"
+            aria-describedby="hint-prazo"
+          />
+          <span class="field-hint" id="hint-prazo">Dias corridos. Use 0 se não houver prazo definido.</span>
+        </div>
+
+        <!-- Quantidade de itens -->
+        <div class="field">
+          <label for="qtd-itens">
+            Quantidade de itens da contratação
+            <span class="required" aria-label="campo obrigatório">*</span>
+          </label>
+          <select id="qtd-itens" name="qtd-itens" required aria-required="true">
+            <option value="" disabled selected>Selecione a faixa…</option>
+          </select>
+        </div>
+
+      </div><!-- /.form-grid -->
+
+      <hr class="divider" aria-hidden="true" />
+
+      <!-- Erro -->
+      <div
+        id="msg-erro"
+        class="msg-erro"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      ></div>
+
+      <!-- Botão -->
+      <button type="submit" class="btn-calcular">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/>
+        </svg>
+        Calcular datas-limite
+      </button>
+
+    </form>
+
+    <!-- ── Resultado ─────────────────────────────────────────────────────────── -->
+    <section
+      id="resultado"
+      class="resultado"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label="Resultado do cálculo de prazos"
+    >
+      <hr class="divider" aria-hidden="true" />
+
+      <div class="resultado-header">
+        <h2 class="resultado-titulo">
+          <span class="dot" aria-hidden="true"></span>
+          Datas-limite estimadas
+        </h2>
+        <span class="modo-calculo-badge" id="badge-modo-calculo"></span>
+      </div>
+
+      <table class="tabela-prazos" id="tabela-prazos" aria-label="Cronograma de atividades e datas-limite">
+        <thead>
+          <tr>
+            <th scope="col">Atividade</th>
+            <th scope="col">Dias totais</th>
+            <th scope="col">Data-limite</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-corpo"></tbody>
+      </table>
+
+      <p class="nota-rodape" role="note">
+        <strong>Atenção:</strong> estas datas são <strong>estimativas</strong> calculadas com base nas médias
+        históricas das contratações do TRE-RN. Considere as particularidades da sua contratação ao utilizá-las
+        para planejar o cronograma. O
+        <span id="nota-modo-calculo"></span>.
+      </p>
+    </section>
+
+  </div><!-- /.card -->
+
+</main>
+
+<!-- ── Footer ──────────────────────────────────────────────────────────────── -->
+<footer class="site-footer" role="contentinfo">
+  <p>TRE-RN &mdash; Tribunal Regional Eleitoral do Rio Grande do Norte &bull; Seção de Tecnologia da Informação</p>
+  <p style="margin-top:.3rem;">Os parâmetros de cálculo são mantidos no arquivo <code>config.js</code>.</p>
+</footer>
+
+<!-- ── Scripts ─────────────────────────────────────────────────────────────── -->
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Referências DOM ──────────────────────────────────────────────────────────
+  const form          = document.getElementById('form-prazos');
+  const selTipo       = document.getElementById('tipo-contratacao');
+  const selItens      = document.getElementById('qtd-itens');
+  const msgErro       = document.getElementById('msg-erro');
+  const secResultado  = document.getElementById('resultado');
+  const tabelaCorpo   = document.getElementById('tabela-corpo');
+  const badgeModo     = document.getElementById('badge-modo-calculo');
+  const notaModo      = document.getElementById('nota-modo-calculo');
+
+  // ── Popula selects a partir do config ───────────────────────────────────────
+  CONFIG.tiposContratacao.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.label;
+    selTipo.appendChild(opt);
+  });
+
+  CONFIG.faixasItens.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.label;
+    selItens.appendChild(opt);
+  });
+
+  // ── Utilitários de data ──────────────────────────────────────────────────────
+
+  /** Verifica se uma data (objeto Date) é final de semana. */
+  function ehFimDeSemana(d) {
+    const dia = d.getDay();
+    return dia === 0 || dia === 6;
+  }
+
+  /** Verifica se uma data (objeto Date) é feriado conforme config. */
+  function ehFeriado(d) {
+    const iso = d.toISOString().slice(0, 10);
+    return CONFIG.feriados.includes(iso);
+  }
+
+  /** Verifica se um dia é não-útil (fim de semana ou feriado). */
+  function ehNaoUtil(d) {
+    return ehFimDeSemana(d) || ehFeriado(d);
+  }
+
+  /**
+   * Subtrai `dias` da data `dataBase`, respeitando o modo de contagem
+   * definido em CONFIG.usarDiasUteis.
+   * Retorna um novo objeto Date.
+   */
+  function subtrairDias(dataBase, dias) {
+    const d = new Date(dataBase);
+    if (!CONFIG.usarDiasUteis) {
+      d.setDate(d.getDate() - dias);
+      return d;
+    }
+    // Dias úteis: avança dia a dia, pulando não-úteis
+    let restante = dias;
+    while (restante > 0) {
+      d.setDate(d.getDate() - 1);
+      if (!ehNaoUtil(d)) restante--;
+    }
+    return d;
+  }
+
+  /** Formata Date para pt-BR: DD/MM/AAAA */
+  function formatarData(d) {
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  // ── Lógica de cálculo ────────────────────────────────────────────────────────
+
+  /**
+   * Constrói o vetor de acréscimos totais somando todas as condições ativas.
+   * Retorna objeto { ETP, TR, FASE_SELECAO, FORMALIZACAO, PRAZO_ENTREGA }.
+   */
+  function calcularAcrescimos(novidade, tipoId, arp, prazoEntrega, faixaId) {
+    const fases = ['ETP', 'TR', 'FASE_SELECAO', 'FORMALIZACAO', 'PRAZO_ENTREGA'];
+    const total = Object.fromEntries(fases.map(f => [f, 0]));
+
+    function somar(origem) {
+      if (!origem) return;
+      fases.forEach(f => { total[f] += (origem[f] || 0); });
+    }
+
+    if (novidade === 'sim') somar(CONFIG.acrescimos.novidade);
+    somar(CONFIG.acrescimos.tipoContratacao[tipoId]);
+    if (arp === 'sim') somar(CONFIG.acrescimos.assinaturaContrato);
+    somar(CONFIG.acrescimos.itensAContratar[faixaId]);
+
+    // Prazo de entrega: o acréscimo É o valor informado (quando > 0)
+    total['PRAZO_ENTREGA'] += prazoEntrega;
+
+    return total;
+  }
+
+  /**
+   * Monta o cronograma retroativo a partir da data de recebimento.
+   * Retorna array de objetos { atividade, diasTotais, data }.
+   */
+  function calcularCronograma(dataRecebimento, acrescimos) {
+    const p = CONFIG.prazoesPadrao;
+
+    // Dias totais por fase = padrão + acréscimos
+    const diasFase = {
+      PRAZO_ENTREGA: p.PRAZO_ENTREGA + acrescimos.PRAZO_ENTREGA,
+      FORMALIZACAO:  p.FORMALIZACAO  + acrescimos.FORMALIZACAO,
+      FASE_SELECAO:  p.FASE_SELECAO  + acrescimos.FASE_SELECAO,
+      TR:            p.TR            + acrescimos.TR,
+      ETP:           p.ETP           + acrescimos.ETP,
+    };
+
+    // Retroage a partir da data de recebimento
+    const dataFimFormalizacao  = subtrairDias(dataRecebimento,  diasFase.PRAZO_ENTREGA);
+    const dataInicioFormalizacao = subtrairDias(dataFimFormalizacao, diasFase.FORMALIZACAO);
+    const dataInicioSelecao    = subtrairDias(dataInicioFormalizacao, diasFase.FASE_SELECAO);
+    const dataEnvioTR          = subtrairDias(dataInicioSelecao, diasFase.TR);
+    const dataEnvioETP         = subtrairDias(dataEnvioTR, diasFase.ETP);
+
+    return [
+      { atividade: 'Envio DOD',                           diasTotais: null,                    data: null, destaque: false, aviso: 'Anterior ao cálculo automático' },
+      { atividade: 'Envio ETP',                           diasTotais: diasFase.ETP,            data: dataEnvioETP,          destaque: false },
+      { atividade: 'Envio TR',                            diasTotais: diasFase.TR,             data: dataEnvioTR,           destaque: false },
+      { atividade: 'Início da Fase de Seleção',           diasTotais: diasFase.FASE_SELECAO,   data: dataInicioSelecao,     destaque: false },
+      { atividade: 'Formalização da Contratação',         diasTotais: diasFase.FORMALIZACAO,   data: dataInicioFormalizacao,destaque: false },
+      { atividade: 'Recebimento do Material / Início do Serviço', diasTotais: diasFase.PRAZO_ENTREGA, data: dataRecebimento, destaque: true },
+    ];
+  }
+
+  // ── Renderização do resultado ────────────────────────────────────────────────
+  function renderizarResultado(cronograma) {
+    tabelaCorpo.innerHTML = '';
+
+    cronograma.forEach(item => {
+      const tr = document.createElement('tr');
+      if (item.destaque) tr.classList.add('linha-destaque');
+
+      // Coluna atividade
+      const tdAtiv = document.createElement('td');
+      tdAtiv.textContent = item.atividade;
+      tr.appendChild(tdAtiv);
+
+      // Coluna dias
+      const tdDias = document.createElement('td');
+      if (item.diasTotais !== null) {
+        const badge = document.createElement('span');
+        badge.className = 'dias-badge';
+        badge.textContent = `${item.diasTotais} dias`;
+        badge.setAttribute('aria-label', `${item.diasTotais} dias`);
+        tdDias.appendChild(badge);
+      } else if (item.aviso) {
+        tdDias.textContent = item.aviso;
+        tdDias.style.fontStyle = 'italic';
+        tdDias.style.fontSize = '.75rem';
+      }
+      tr.appendChild(tdDias);
+
+      // Coluna data
+      const tdData = document.createElement('td');
+      tdData.textContent = item.data ? formatarData(item.data) : '—';
+      tr.appendChild(tdData);
+
+      tabelaCorpo.appendChild(tr);
+    });
+
+    // Badge e nota de modo de cálculo
+    const modoLabel = CONFIG.usarDiasUteis ? 'Dias úteis' : 'Dias corridos';
+    badgeModo.textContent = modoLabel;
+    notaModo.textContent  = CONFIG.usarDiasUteis
+      ? 'cálculo considera apenas dias úteis, excluindo finais de semana e feriados configurados'
+      : 'cálculo considera dias corridos (incluindo finais de semana e feriados)';
+
+    // Exibe a seção com animação
+    secResultado.classList.add('visivel');
+    secResultado.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Validação ────────────────────────────────────────────────────────────────
+  function mostrarErro(msg) {
+    msgErro.textContent = msg;
+    msgErro.classList.add('visivel');
+    msgErro.focus();
+  }
+  function limparErro() {
+    msgErro.textContent = '';
+    msgErro.classList.remove('visivel');
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────────
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    limparErro();
+
+    const dataStr     = document.getElementById('data-recebimento').value;
+    const novidade    = document.querySelector('input[name="novidade"]:checked')?.value;
+    const arp         = document.querySelector('input[name="arp"]:checked')?.value;
+    const tipoId      = parseInt(document.getElementById('tipo-contratacao').value, 10);
+    const prazoStr    = document.getElementById('prazo-entrega').value;
+    const faixaId     = parseInt(document.getElementById('qtd-itens').value, 10);
+
+    // Validações
+    if (!dataStr) { mostrarErro('Informe a data de recebimento do material ou início do serviço.'); return; }
+    if (!novidade) { mostrarErro('Indique se trata-se de uma contratação nova/desconhecida.'); return; }
+    if (!arp) { mostrarErro('Indique se haverá assinatura de contrato ou ARP.'); return; }
+    if (isNaN(tipoId)) { mostrarErro('Selecione o tipo de contratação.'); return; }
+    if (prazoStr === '' || isNaN(parseInt(prazoStr, 10))) { mostrarErro('Informe o prazo para entrega (use 0 se não houver).'); return; }
+    if (isNaN(faixaId)) { mostrarErro('Selecione a quantidade de itens da contratação.'); return; }
+
+    const prazoEntrega  = parseInt(prazoStr, 10);
+    // Parse local (evita offset de timezone)
+    const [ano, mes, dia] = dataStr.split('-').map(Number);
+    const dataRecebimento = new Date(ano, mes - 1, dia);
+
+    const acrescimos  = calcularAcrescimos(novidade, tipoId, arp, prazoEntrega, faixaId);
+    const cronograma  = calcularCronograma(dataRecebimento, acrescimos);
+
+    renderizarResultado(cronograma);
+  });
+
+})();
+</script>
+
+</body>
+</html>
